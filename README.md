@@ -8,19 +8,15 @@ Run each with `$ python script` if requirements are installed system wide, or wi
 
 ### compress.py
 
-    Load, process, and compress a directory of ascii-formatted trec runs into corresponding "npz" files.
-
-    Run without arguments for usage.
+Load, process, and compress a directory of ascii-formatted trec runs into corresponding "npz" files. Run without arguments for usage.
 
 ### hitsmetasearch.py
 
-    Run the hits algorithm as applied to metasearch.
-
-    Run without arguments for usage.
+Run the hits algorithm as applied to metasearch. Run without arguments for usage.
 
 ### versions.py
 
-    Print out your python and NumPy persions.
+Print out your python and NumPy persions.
 
 ---
 
