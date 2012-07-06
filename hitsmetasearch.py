@@ -4,7 +4,9 @@
 import sys
 import glob
 import os.path
+import unittest
 import itertools
+import collections
 # 3rd party
 import numpy
 # local
@@ -15,73 +17,98 @@ import treclib
 ## HITS algorithm
 
 
-def normalized(assoc):
-    '''Return a copy of the assoc with the values normalized to 1.'''
-    a = assoc.copy()
-    a['v'] /= a['v'].sum()
-    return a
-
-
-def hits_update(g, oldauts, oldhubs):
-    # an aut score is the sum of the scores of the hubs which point to it
-    # a hub score is the sum of the scores of the auts to which it points
-    return oldauts, oldhubs
+def hits_update(oldauths, oldhubs, authinlinks, huboutlinks, auxdata):
+    # auths [x <- I()]
+    # hubs  [y <- O()]
+    # an auth score is the sum of the scores of the hubs which point to it
+    # a hub score is the sum of the scores of the auths to which it points
+    auths = oldauths.copy()
+    for authi, inlinks in enumerate(authinlinks):
+        auths[authi] = 
+    hubs = oldhubs.copy()
+    return auths, hubs
 
 
 def hits(graph, update_fn, stopping_fn):
     '''Calculate hub and authority scores; end when stopping_fn returns true.
 
-    A ScrA is a <assoc:str,float>.
-
     graph:
-        {str: <assoc:str,?>, ...}
-        {hubid: <assoc:authid,?>, ...}
+        {str: 1darr<2>, ...}
+        {hubid: <authid,?>, ...}
     update_fn:
-        [graph ScrA ScrA --> (ScrA, ScrA)]
-        [graph old_auts old_hubs --> (cur_auts, cur_hubs)]
+        [1darr 1darr 2darr 2darr graph --> (assoc, assoc)]
+        [old_auths old_hubs auth_inlinks hub_outlinks --> (cur_auths, cur_hubs)]
     stopping_fn:
-        [int ScrA ScrA --> bool]
-        [iteration_number cur_auts cur_hubs --> converged]
+            True when the algorithm should stop, false otherwise
+        [int 1darr 1darr --> bool]
+        [iteration_number cur_auths cur_hubs --> converged]
 
     return:
-        (ScrA, ScrA)
-        (final_auts, final_hubs)
+        (1darr, 1darr)
+        (final_auths, final_hubs)
 
     '''
-    # get aut and hub sets
-    auttup = set()
-    for autdat in graph.itervalues():
-        auttup |= set(autdat['k'])
-    auttup = tuple(sorted(auttup))
+    def get_authset(g):
+        s = set()
+        for authdat in graph.itervalues():
+            authset |= set(authdat['k'])
+        authtup = tuple(sorted(authset))
+    del authset
     hubtup = tuple(sorted(graph.keys()))
     # report sizes
-    print len(auttup), 'authorities;', len(hubtup), 'hubs'
-    # initialize ScrAssoc(s) to 1
-    a = treclib.assoc((s, 1) for s in auttup)
-    h = treclib.assoc((s, 1) for s in hubtup)
-    # iterate
-    for cs_i in itertools.count():
-        math_i = cs_i + 1
-        print 'Iteration', math_i
-        # auts [x <- I()]
-        # hubs [y <- O()]
-        a, h = update_fn(graph, a, h) # i-1 becomes i
+    print len(authtup), 'authorities;', len(hubtup), 'hubs'
+    # characterize the graph
+    a_inlink = np.zeros([len(auttup),len(hubtup)], dtype=numpy.bool)
+    authindexes = {authid:i for i, authid in enumerate(authtup)}
+    for hubi, hubid in enumerate(hubtup):
+            hublinks = graph[hubid]['k']
+            for authid in links:
+                authi = authindexes[authid]
+                a_inlink[authi][hubi] = True
+            hublinks = None
+    del authindexes
+    h_outlink = a_inlink.transpose()
+    # initialize scores to 1
+    a = numpy.ones(len(auttup), dtype=numpy.float64)
+    h = numpy.ones(len(hubtup), dtype=numpy.float64)
+    # iteratively update scores
+    for i in itertools.count(1):
+        print 'Iteration', i
+        # update i-1 to i
+        a, h = update_fn(a, h, a_inlinks, h_outlinks, graph)
         # normalize
-        # a['k'] **= 2
-        # h['k'] **= 2
-        a = normalized(a)
-        h = normalized(h)
+        # a **= 2
+        # h **= 2
+        a /= a.sum()
+        h /= h.sum()
         # check stopping condition
-        if stopping_fn(math_i, a, h):
+        if stopping_fn(i_math, a, h):
             break
     return a, h
 
 
+class TestHITS(unittest.TestCase):
+    def setUp(self):
+        self.graph = {
+            'h1':assoc(zip('abcd', itertools.repeat(0))),
+            'h2':assoc(zip('ace', itertools.repeat(0))),
+        }
+        self.oldauths = assoc([('a',3), ('b',1), ('c',4), ('d',3), ('e',5)])
+        self.oldhubs  = assoc([('h1',3), ('h2',7)])
+        self.newauths = assoc([('a',10), ('b',3), ('c',10), ('d',3), ('e',7)])
+        self.newhubs  = assoc([('h1',11), ('h2',13)])
+    def test__hits_update(self):
+        a, h = hits_update(self.graph, self.oldauths, self.oldhubs)
+        self.assertEqual(a, self.newauths)
+        self.assertEqual(h, self.newhubs)
+
+
 ##############################################################################
-## Main functions
+## Main
 
 
 if __name__ == '__main__':
+    unittest.main()
     # args
     try:
         queryno = int(sys.argv[1])

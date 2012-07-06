@@ -31,6 +31,13 @@ def assoc(yields_twotups):
     )
 
 
+def nplist(yields_floats):
+    return numpy.fromiter(
+        yields_floats,
+        dtype=numpy.dtype(SCR_SCALAR)
+    )
+
+
 def __gen_system_paths(p):
     return glob.iglob(os.path.join(p, 'input.*'))
 
