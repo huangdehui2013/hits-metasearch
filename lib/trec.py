@@ -20,24 +20,6 @@ DOC_SCALAR = 'S32' # (numpy.str_, 32)
 SCR_SCALAR = '<f8' # numpy.float64
 
 
-def assoc(yields_twotups):
-    '''Create a numpy record array with a string and a float field.'''
-    return numpy.fromiter(
-        yields_twotups,
-        dtype=numpy.dtype([
-            ('k', DOC_SCALAR),
-            ('v', SCR_SCALAR),
-        ])
-    )
-
-
-def nplist(yields_floats):
-    return numpy.fromiter(
-        yields_floats,
-        dtype=numpy.dtype(SCR_SCALAR)
-    )
-
-
 def __gen_system_paths(p):
     return glob.iglob(os.path.join(p, 'input.*'))
 
@@ -69,12 +51,18 @@ def load_system(path):
         # filter to only this query's data
         qraw = raw[raw[QRY] == qno]
         # put data in a new container
-        qdat = assoc(itertools.izip(numpy.char.upper(qraw[DOC]), qraw[SCR]))
+        qdat = numpy.fromiter(
+            itertools.izip(numpy.char.upper(qraw[DOC]), qraw[SCR]),
+            dtype=numpy.dtype([
+                (DOC, DOC_SCALAR),
+                (SCR, SCR_SCALAR),
+            ])
+        )
         # sort by docid, then reverse
-        ordering = numpy.argsort(qdat['k'])[::-1]
+        ordering = numpy.argsort(qdat[DOC])[::-1]
         qdat = qdat[ordering]
         # stable sort by score, then reverse
-        ordering = numpy.lexsort(  (qdat['v'],)  )[::-1]
+        ordering = numpy.lexsort(  (qdat[SCR],)  )[::-1]
         qdat = qdat[ordering]
         # accum
         data['query{}'.format(qno)] = qdat
@@ -108,6 +96,34 @@ def comp_system_dir(dirpath, outpath):
         print '\r', (i + 1),
         sys.stdout.flush()
     print '\rCompressed', (i + 1)
+
+
+class CompressedTREC(object):
+    '''
+    graph:
+        {str: 1darr<2>, ...}
+        {hubid: <authid,?>, ...}
+    '''
+    def __init__():
+        npz = []
+        run = {}
+        for p in glob.iglob(os.path.join(npzpath, '*.npz')):
+            npzfile = numpy.load(p)
+            npz.append(npzfile)
+            sysid = os.path.splitext(os.path.basename(p))[0]
+            try:
+                # extract a run for the specified query
+                run[sysid] = npzfile['query' + str(queryno)]
+            except KeyError:
+                print 'No run for query #{} in system "{}"'.format(queryno, sysid)
+        # report on runs loaded
+        if run:
+            print '{} runs loaded for query #{}'.format(len(run), queryno)
+        else:
+            print 'No runs were loaded'
+            exit()
+    def close():
+        [f.close() for f in npz]
 
 
 # eof
