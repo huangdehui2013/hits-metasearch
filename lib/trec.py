@@ -20,10 +20,6 @@ DOC_SCALAR = 'S32' # (numpy.str_, 32)
 SCR_SCALAR = '<f8' # numpy.float64
 
 
-def __gen_system_paths(p):
-    return glob.iglob(os.path.join(p, 'input.*'))
-
-
 def load_system(path):
     '''str --> str, ndarray
 
@@ -75,7 +71,7 @@ def gen_system_dir(dirpath):
     # let
     names = set()
     # loop
-    for path in __gen_system_paths(dirpath):
+    for path in glob.iglob(os.path.join(dirpath, 'input.*')):
         name, data = load_system(path)
         if name in names:
             raise ValueError('duplicate systems with name "{}"'.format(name))
@@ -98,32 +94,23 @@ def comp_system_dir(dirpath, outpath):
     print '\rCompressed', (i + 1)
 
 
-class CompressedTREC(object):
+def load_comp_system_dir(dirpath, queryno, quiet=False):
+    '''Return {sysid: <docid,score>, ...} for a given query number.
+    
+    {str: 1darr<str,float>, ...}
+
     '''
-    graph:
-        {str: 1darr<2>, ...}
-        {hubid: <authid,?>, ...}
-    '''
-    def __init__():
-        npz = []
-        run = {}
-        for p in glob.iglob(os.path.join(npzpath, '*.npz')):
-            npzfile = numpy.load(p)
-            npz.append(npzfile)
-            sysid = os.path.splitext(os.path.basename(p))[0]
-            try:
-                # extract a run for the specified query
-                run[sysid] = npzfile['query' + str(queryno)]
-            except KeyError:
+    data = {}
+    for p in glob.iglob(os.path.join(dirpath, '*.npz')):
+        f = numpy.load(p)
+        sysid, _ = os.path.splitext(os.path.basename(p))
+        try:
+            # extract a run for the specified query
+            data[sysid] = f['query{}'.format(queryno)]
+        except KeyError:
+            if not quiet:
                 print 'No run for query #{} in system "{}"'.format(queryno, sysid)
-        # report on runs loaded
-        if run:
-            print '{} runs loaded for query #{}'.format(len(run), queryno)
-        else:
-            print 'No runs were loaded'
-            exit()
-    def close():
-        [f.close() for f in npz]
+    return data
 
 
 # eof
