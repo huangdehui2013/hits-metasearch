@@ -6,7 +6,7 @@ import sys
 # 3rd party
 import numpy
 # local
-import treclib
+import lib.trec
 
 
 if __name__ == '__main__':
@@ -32,7 +32,7 @@ if __name__ == '__main__':
         print 'Got: "{}"'.format(srcdir)
         exit()
     # compress
-    treclib.comp_system_dir(srcdir, dstdir)
+    lib.trec.comp_system_dir(srcdir, dstdir)
 
 
 # eof
