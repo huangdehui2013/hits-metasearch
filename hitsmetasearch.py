@@ -10,31 +10,35 @@ import collections
 # 3rd party
 import numpy
 # local
-import treclib
+import lib.trec
 
 
-def mk_nodes():
-    #
-    authset = set()
-    for authdat in graph.itervalues():
-        authset |= set(authdat['k'])
-    authtup = tuple(sorted(authset))
-    del authset
-    hubtup = tuple(sorted(graph.keys()))
+def mk_nodes(allruns):
+    '''Return (set, set) of (sysids, docids).'''
+    doc_field = lib.trec.DOC
+    docs = set()
+    for arr in allruns.itervalues():
+        docs |= set(arr[doc_field])
+    return set(graph.keys()), docs
 
 
-def mk_edges():
-    #
-    a_inlink = np.zeros([len(auttup),len(hubtup)], dtype=numpy.bool)
-    authindexes = {authid:i for i, authid in enumerate(authtup)}
-    for hubi, hubid in enumerate(hubtup):
-            hublinks = graph[hubid]['k']
-            for authid in links:
-                authi = authindexes[authid]
-                a_inlink[authi][hubi] = True
-            hublinks = None
-    del authindexes
-    h_outlink = a_inlink.transpose()
+def mk_edges(allruns, systup, doctup):
+    '''Return an adjacency matrix with the edges from systems to documents.
+
+    Return a numpy.array shaped (# sys, # docs) containing booleans.
+
+    '''
+    doc_field = lib.trec.DOC
+    edges = numpy.zeros([len(systup),len(doctup)], dtype=numpy.bool)
+    docindexes = {docid:i for i, docid in enumerate(doctup)}
+    for sys_i, sysid in enumerate(systup):
+            sysdocs = allruns[sisid][doc_field]
+            for docid in sysdocs:
+                doc_i = docindexes[docid]
+                edges[sys_i][doc_i] = True
+            sysdocs = None
+    del docindexes
+    return edges
 
 
 ##############################################################################
@@ -54,7 +58,20 @@ if __name__ == '__main__':
         print 'INT  - query number'
         print 'PATH - directory with *.npz files produced by compress.py'
         exit()
-    # open npz files
+    # data
+    runs = lib.trec.load_comp_system_dir(npzpath, queryno)
+    if not runs:
+        print 'No runs were loaded.'
+        exit()
+    # graph nodes
+    sysset, docset = mk_nodes(runs)
+    systup = tuple(sorted(syss))
+    doctup = tuple(sorted(docs))
+    del sysset
+    del docset
+    # graph edges
+    sys_outlinks = mk_edges(runs, systup, doctup)
+    doc_inlinks = sys_outlinks.transpose()
     # perform analysis
     print len(authtup), 'authorities;', len(hubtup), 'hubs'
     k=[3]
