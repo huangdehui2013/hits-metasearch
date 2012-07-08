@@ -1,21 +1,27 @@
+'''Implement HITS in a general way using callbacks.'''
 
-##############################################################################
-## HITS algorithm
+# stdlib
+import unittest
+import itertools
+# 3rd party
+import numpy
 
 
-def hits_update(oldauths, oldhubs, authinlinks, huboutlinks, auxdata):
+def hits_update(a_old, h_old, h_outlinks, data):
     # auths [x <- I()]
     # hubs  [y <- O()]
     # an auth score is the sum of the scores of the hubs which point to it
     # a hub score is the sum of the scores of the auths to which it points
-    auths = oldauths.copy()
-    for authi, inlinks in enumerate(authinlinks):
-        auths[authi] = 
-    hubs = oldhubs.copy()
-    return auths, hubs
+    assert len(h_old) == h_outlinks.shape[0]
+    assert len(a_old) == h_outlinks.shape[1]
+    a = numpy.fromiter((h_old[m].sum() for m in h_outlinks.transpose()),
+        dtype=a_old.dtype, count=a_old.shape[0])
+    h = numpy.fromiter((a_old[m].sum() for m in h_outlinks),
+        dtype=h_old.dtype, count=h_old.shape[1])
+    return a, h
 
 
-def hits(, update_fn, stopping_fn):
+def hits(a_inlinks, h_outlinks, update_fn, stopping_fn, data):
     '''Calculate hub and authority scores; end when stopping_fn returns true.
 
     update_fn:
@@ -53,10 +59,6 @@ def hits(, update_fn, stopping_fn):
 
 class TestHITS(unittest.TestCase):
     def setUp(self):
-        self.graph = {
-            'h1':assoc(zip('abcd', itertools.repeat(0))),
-            'h2':assoc(zip('ace', itertools.repeat(0))),
-        }
         self.oldauths = assoc([('a',3), ('b',1), ('c',4), ('d',3), ('e',5)])
         self.oldhubs  = assoc([('h1',3), ('h2',7)])
         self.newauths = assoc([('a',10), ('b',3), ('c',10), ('d',3), ('e',7)])
@@ -65,5 +67,10 @@ class TestHITS(unittest.TestCase):
         a, h = hits_update(self.graph, self.oldauths, self.oldhubs)
         self.assertEqual(a, self.newauths)
         self.assertEqual(h, self.newhubs)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
 
 # eof
