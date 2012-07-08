@@ -1,5 +1,4 @@
-#!ENV/bin/python
-
+'''Load and process whole directories of TREC-formatted retrieval runs.'''
 
 # stdlib
 import os
@@ -109,7 +108,8 @@ def load_comp_system_dir(dirpath, queryno, quiet=False):
             data[sysid] = f['query{}'.format(queryno)]
         except KeyError:
             if not quiet:
-                print 'No run for query #{} in system "{}"'.format(queryno, sysid)
+                print 'No run for query #{} in system "{}"'.format(queryno,
+                    sysid)
     return data
 
 
