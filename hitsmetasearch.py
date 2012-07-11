@@ -12,6 +12,7 @@ import numpy
 # local
 import lib.trec
 import lib.hits
+import lib.end
 
 
 ##############################################################################
@@ -46,7 +47,7 @@ def mk_edges(allruns, sysarr, docarr):
     return edges
 
 
-class TestHITS(unittest.TestCase):
+class TestMainUtils(unittest.TestCase):
     def assoc(self, iterable):
         return numpy.fromiter(
             iterable,
@@ -79,7 +80,9 @@ class TestHITS(unittest.TestCase):
 
 if __name__ == '__main__':
     if '--test' in sys.argv:
-        sys.argv.remove('--test')
+        sys.argv = sys.argv[1:]
+        while len(sys.argv) > 1:
+            sys.argv.pop()
         unittest.main()
         exit()
     # parse args
@@ -105,10 +108,7 @@ if __name__ == '__main__':
     sys_outlinks = mk_edges(runs, sysarr, docarr)
     print sys_outlinks.nbytes, 'bytes used by adjacency matrix'
     # perform hits analysis
-    k=[3]
-    docscr, sysscr = lib.hits.hits(sys_outlinks,
-        lambda *_, **__: k.append(k.pop()-1) or k[0]>=0,
-        )
+    docscr, sysscr = lib.hits.hits(sys_outlinks, lib.end.Countdown(10))
     # report
     order = numpy.argsort(sysscr)[::-1]
     print '\n'.join('{:< 20} {}'.format(*x) for x in zip(sysscr[order][:10], sysarr[order]))
