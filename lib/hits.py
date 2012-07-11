@@ -33,7 +33,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
     stopping_fn:
         [int 1darr<num> 1darr<num> --> bool]
         [iteration_number cur_auths cur_hubs --> converged]
-        The algorithm will continue while this function returns True.
+        The algorithm will continue while this function returns False.
     update_fn:
         [1darr<num> 1darr<num> 2darr<bool> data --> (1darr<num>, 1darr<num>)]
         [old_auths old_hubs hub_outlinks data --> (cur_auths, cur_hubs)]
@@ -56,7 +56,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
     h = numpy.ones(h_outlinks.shape[0], dtype=numpy.float64)
     # iteratively update scores
     i = 1
-    while stopping_fn(i, a, h):
+    while not stopping_fn(i, a, h):
         print 'Iteration', i
         # update
         a, h = update_fn(a, h, a_inlinks, h_outlinks, data)
