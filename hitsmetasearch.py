@@ -47,6 +47,25 @@ def mk_edges(allruns, sysarr, docarr):
     return edges
 
 
+class RatioIsOne(object):
+    '''True the ratio of vectors prev:cur are within epsilon of 1.'''
+    def __init__(self, epsilon, msg=None):
+        self.eps, = numpy.array([abs(epsilon)], dtype=lib.trec.SCR_SCALAR)
+        self.msg = msg
+        self.prev = None
+    def __call__(self, vector):
+        '''1darr<float> -> bool'''
+        if self.prev is None:
+            self.prev = vector
+            return False
+        else:
+            eq = (abs(self.prev / vector - 1) < self.eps).all()
+            self.prev = vector
+            if self.msg:
+                print self.msg
+            return eq
+
+
 class TestMainUtils(unittest.TestCase):
     def assoc(self, iterable):
         return numpy.fromiter(
@@ -108,7 +127,12 @@ if __name__ == '__main__':
     sys_outlinks = mk_edges(runs, sysarr, docarr)
     print sys_outlinks.nbytes, 'bytes used by adjacency matrix'
     # perform hits analysis
-    docscr, sysscr = lib.hits.hits(sys_outlinks, lib.end.Countdown(10))
+    a_rio = RatioIsOne(0.001, msg="\tAuths satisfy")
+    h_rio = RatioIsOne(0.1, msg="\tHubs satisfy")
+    docscr, sysscr = lib.hits.hits(
+        sys_outlinks,
+        lib.end.ConditionStreak(lambda i,a,h: a_rio(a) and h_rio(h), 3)
+    )
     # report
     order = numpy.argsort(sysscr)[::-1]
     print '\n'.join('{:< 20} {}'.format(*x) for x in zip(sysscr[order][:10], sysarr[order]))
