@@ -32,7 +32,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
         An adjacency matrix indexed [hub][auth] with True for edges.
     stopping_fn:
         [int 1darr<num> 1darr<num> --> bool]
-        [iteration_number cur_auths cur_hubs --> converged]
+        [iteration_number cur_auths cur_hubs --> continue?]
         The algorithm will continue while this function returns False.
     update_fn:
         [1darr<num> 1darr<num> 2darr<bool> data --> (1darr<num>, 1darr<num>)]
