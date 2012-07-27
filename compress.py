@@ -21,7 +21,7 @@ if __name__ == '__main__':
         print
         print 'SCR -    data directory containing input.* TREC runs'
         print 'DST -    directory to which *.npz files will be written'
-        print '         DST must not exist'
+        print '         DST must not exist; it will be created.'
         exit()
     try:
         name = os.path.basename(srcdir.rstrip('/'))
