@@ -1,6 +1,13 @@
 #!ENV/bin/python
 
 
+# future
+from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+from codecs import open
+# stdlib
 import os
 import sys
 # 3rd party
@@ -17,19 +24,19 @@ if __name__ == '__main__':
         assert os.path.isdir(srcdir)
         assert not os.path.exists(dstdir)
     except:
-        print 'USAGE: python {} SRC DST'.format(__file__)
-        print
-        print 'SCR -    data directory containing input.* TREC runs'
-        print 'DST -    directory to which *.npz files will be written'
-        print '         DST must not exist; it will be created.'
+        print('USAGE: python {} SRC DST'.format(__file__))
+        print()
+        print('SCR -    data directory containing input.* TREC runs')
+        print('DST -    directory to which *.npz files will be written')
+        print('         DST must not exist; it will be created.')
         exit()
     try:
         name = os.path.basename(srcdir.rstrip('/'))
         name = name.strip().strip('./').strip()
         assert name
     except:
-        print 'Please provide a path which includes the final basename.'
-        print 'Got: "{}"'.format(srcdir)
+        print('Please provide a path which includes the final basename.')
+        print('Got: "{}"'.format(srcdir))
         exit()
     # compress
     lib.trec.comp_system_dir(srcdir, dstdir)

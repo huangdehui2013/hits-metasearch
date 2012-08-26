@@ -1,5 +1,12 @@
 '''Implement HITS in a general way using callbacks.'''
 
+
+# future
+from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+from codecs import open
 # stdlib
 import unittest
 # 3rd party
@@ -9,7 +16,7 @@ import numpy
 def hits_update(a_old, h_old, a_inlinks, h_outlinks, data=None):
     '''Update authority and hub scores.
 
-    1darr<num> 1darr<num> 2darr<bool> any --> 1darr<num> 1darr<num>
+    1darr<num> 1darr<num> 2darr<bool> 2darr<bool> any --> 1darr<num> 1darr<num>
 
     '''
     assert len(h_old) == h_outlinks.shape[0]
@@ -57,7 +64,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
     # iteratively update scores
     i = 1
     while not stopping_fn(i, a, h):
-        print 'Iteration', i
+        print('Iteration', i)
         # update
         a, h = update_fn(a, h, a_inlinks, h_outlinks, data)
         # normalize

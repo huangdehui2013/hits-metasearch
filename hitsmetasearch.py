@@ -1,6 +1,13 @@
 #!ENV/bin/python
 
 
+# future
+from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+from codecs import open
+# stdlib
 import sys
 import glob
 import os.path
@@ -48,7 +55,7 @@ def mk_edges(allruns, sysarr, docarr):
 
 
 class RatioIsOne(object):
-    '''True the ratio of vectors prev:cur are within epsilon of 1.'''
+    '''True if the ratio of vectors prev:cur are within epsilon of 1.'''
     def __init__(self, epsilon, msg=None):
         self.eps, = numpy.array([abs(epsilon)], dtype=lib.trec.SCR_SCALAR)
         self.msg = msg
@@ -62,7 +69,7 @@ class RatioIsOne(object):
             eq = (abs(self.prev / vector - 1) < self.eps).all()
             self.prev = vector
             if self.msg:
-                print self.msg
+                print(self.msg)
             return eq
 
 
@@ -98,10 +105,10 @@ class TestMainUtils(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    if '--test' in sys.argv:
-        sys.argv = sys.argv[1:]
-        while len(sys.argv) > 1:
-            sys.argv.pop()
+    # run tests
+    if '-t' in sys.argv or '--test' in sys.argv:
+        '-t' in sys.argv and sys.argv.remove('-t')
+        '--test' in sys.argv and sys.argv.remove('--test')
         unittest.main()
         exit()
     # parse args
@@ -110,22 +117,25 @@ if __name__ == '__main__':
         queryno = int(sys.argv[2])
         assert os.path.isdir(npzpath)
     except:
-        print 'USAGE: python {} PATH INT'.format(__file__)
-        print
-        print 'PATH - directory with *.npz files produced by compress.py'
-        print 'INT  - query number'
+        print('USAGE: python {} PATH INT'.format(__file__))
+        print()
+        print('PATH - directory with *.npz files produced by compress.py')
+        print('INT  - query number')
         exit()
     # load run data
     runs = lib.trec.load_comp_system_dir(npzpath, queryno)
     if not runs:
-        print 'No runs were loaded.'
+        print('No runs were loaded.')
         exit()
     # make graph nodes
-    sysarr, docarr = [numpy.array(sorted(s)) for s in mk_nodes(runs)]
-    print len(sysarr), 'Systems;', len(docarr), 'Documents'
+    sysset, docset = mk_nodes(runs)
+    sysarr = numpy.array(sorted(sysset))
+    docarr = numpy.array(sorted(docset))
+    del sysset, docset
+    print(len(sysarr), 'Systems;', len(docarr), 'Documents')
     # make graph edges
     sys_outlinks = mk_edges(runs, sysarr, docarr)
-    print sys_outlinks.nbytes, 'bytes used by adjacency matrix'
+    print(sys_outlinks.nbytes, 'bytes used by adjacency matrix')
     # perform hits analysis
     a_rio = RatioIsOne(0.001, msg="\tAuths satisfy")
     h_rio = RatioIsOne(0.1, msg="\tHubs satisfy")
@@ -135,10 +145,10 @@ if __name__ == '__main__':
     )
     # report
     order = numpy.argsort(sysscr)[::-1]
-    print '\n'.join('{:< 20} {}'.format(*x) for x in zip(sysscr[order][:10], sysarr[order]))
-    print
+    print('\n'.join('{:< 20} {}'.format(*x) for x in zip(sysscr[order][:10], sysarr[order])))
+    print()
     order = numpy.argsort(docscr)[::-1]
-    print '\n'.join('{:< 20} {}'.format(*x) for x in zip(docscr[order][:10], docarr[order]))
+    print('\n'.join('{:< 20} {}'.format(*x) for x in zip(docscr[order][:10], docarr[order])))
 
 
 ##############################################################################

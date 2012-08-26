@@ -5,6 +5,13 @@ has been detected. True means convergence is detected and iteration may stop.
 
 '''
 
+
+# future
+from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+from codecs import open
 # stdlib
 import unittest
 # 3rd party

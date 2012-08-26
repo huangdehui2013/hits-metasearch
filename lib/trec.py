@@ -1,5 +1,12 @@
 '''Load and process whole directories of TREC-formatted retrieval runs.'''
 
+
+# future
+from __future__ import division
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import unicode_literals
+from codecs import open
 # stdlib
 import os
 import sys
@@ -9,9 +16,9 @@ import itertools
 import numpy
 
 
-QRY = 'queryno'
-DOC = 'docid'
-SCR = 'score'
+QRY = b'queryno'
+DOC = b'docid'
+SCR = b'score'
 
 
 QRY_SCALAR = '<i2' # numpy.int16
@@ -84,13 +91,13 @@ def gen_system_dir(dirpath):
 def comp_system_dir(dirpath, outpath):
     outpath = os.path.normpath(outpath)
     os.makedirs(outpath)
-    print 'Compressing systems...'
+    print('Compressing systems...')
     for i, (name, data) in enumerate(gen_system_dir(dirpath)):
         outname = os.path.join(outpath, '{}.npz'.format(name))
         numpy.savez_compressed(outname, **data)
-        print '\r', (i + 1),
+        print('\r', (i + 1), end='')
         sys.stdout.flush()
-    print '\rCompressed', (i + 1)
+    print('\rCompressed', (i + 1))
 
 
 def load_comp_system_dir(dirpath, queryno, quiet=False):
@@ -108,8 +115,8 @@ def load_comp_system_dir(dirpath, queryno, quiet=False):
             data[sysid] = f['query{}'.format(queryno)]
         except KeyError:
             if not quiet:
-                print 'No run for query #{} in system "{}"'.format(queryno,
-                    sysid)
+                print('No run for query #{} in system "{}"'.format(queryno,
+                    sysid))
     return data
 
 

@@ -1,4 +1,6 @@
-*.pyc
 ENV
 data-*
-papers
+*.pyc
+*.swp
+*.tgz
+trec_eval.pl
