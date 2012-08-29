@@ -88,19 +88,19 @@ def gen_system_dir(dirpath):
         raise ValueError('no systems in "{}"'.format(dirpath))
 
 
-def comp_system_dir(dirpath, outpath):
+def comp_system_dir(dirpath, outpath, printto=None):
     outpath = os.path.normpath(outpath)
     os.makedirs(outpath)
-    print('Compressing systems...')
+    printto and print('Compressing systems...', file=printto)
     for i, (name, data) in enumerate(gen_system_dir(dirpath)):
         outname = os.path.join(outpath, '{}.npz'.format(name))
         numpy.savez_compressed(outname, **data)
-        print('\r', (i + 1), end='')
-        sys.stdout.flush()
-    print('\rCompressed', (i + 1))
+        printto and print('\r', (i + 1), end='', file=printto)
+        printto and sys.stdout.flush()
+    printto and print('\rCompressed', (i + 1), file=printto)
 
 
-def load_comp_system_dir(dirpath, queryno, quiet=False):
+def load_comp_system_dir(dirpath, queryno, quiet=False, printto=None):
     '''Return {sysid: <docid,score>, ...} for a given query number.
     
     {str: 1darr<str,float>, ...}
@@ -115,8 +115,8 @@ def load_comp_system_dir(dirpath, queryno, quiet=False):
             data[sysid] = f['query{}'.format(queryno)]
         except KeyError:
             if not quiet:
-                print('No run for query #{} in system "{}"'.format(queryno,
-                    sysid))
+                printto and print('No run for query #{} in system "{}"'.
+                    format(queryno, sysid), file=printto)
     return data
 
 

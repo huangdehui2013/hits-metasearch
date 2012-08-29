@@ -8,9 +8,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from codecs import open
 # stdlib
+import os
 import sys
 import glob
-import os.path
+import argparse
 import unittest
 import itertools
 import collections
@@ -56,10 +57,11 @@ def mk_edges(allruns, sysarr, docarr):
 
 class RatioIsOne(object):
     '''True if the ratio of vectors prev:cur are within epsilon of 1.'''
-    def __init__(self, epsilon, msg=None):
+    def __init__(self, epsilon, msg=None, printto=None):
         self.eps, = numpy.array([abs(epsilon)], dtype=lib.trec.SCR_SCALAR)
         self.msg = msg
         self.prev = None
+        self.printto = printto
     def __call__(self, vector):
         '''1darr<float> -> bool'''
         if self.prev is None:
@@ -69,7 +71,7 @@ class RatioIsOne(object):
             eq = (abs(self.prev / vector - 1) < self.eps).all()
             self.prev = vector
             if self.msg:
-                print(self.msg)
+                self.printto and print('INFO:', self.msg, file=printto)
             return eq
 
 
@@ -100,8 +102,50 @@ class TestMainUtils(unittest.TestCase):
         self.assertTrue((e == self.e).all())
 
 
+def stderr(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 ##############################################################################
 ## Main
+
+
+def main(npzpath, queryno, iterct):
+    # load run data
+    runs = lib.trec.load_comp_system_dir(npzpath, queryno, printto=sys.stderr)
+    if not runs:
+        stderr('ERROR: No runs were loaded.')
+        exit(1)
+    # make graph nodes
+    sysset, docset = mk_nodes(runs)
+    sysarr = numpy.array(sorted(sysset))
+    docarr = numpy.array(sorted(docset))
+    del sysset, docset
+    stderr('INFO: {} systems, {} documents'.format(len(sysarr), len(docarr)))
+    # make graph edges
+    sys_outlinks = mk_edges(runs, sysarr, docarr)
+    stderr('INFO: {} bytes used by adjacency matrix'.format(sys_outlinks.nbytes))
+    # perform hits analysis
+    docscr, sysscr = lib.hits.hits(
+        sys_outlinks,
+        lib.end.Countdown(iterct),
+        printto=sys.stderr)
+    # report systems
+    order = numpy.argsort(sysscr)[::-1]
+    stderr('INFO: Top ten systems')
+    for scr, sysid in itertools.izip(sysscr[order][:10], sysarr[order]):
+        stderr('INFO: {:< 20} {}'.format(scr, sysid))
+    # report documents
+    order = numpy.argsort(docscr)[::-1]
+    for i, (scr, docid) in enumerate(
+    itertools.izip(docscr[order][:1000], docarr[order])):
+        print('{qno:d} Q0 {docid:s} {rank:d} {score:.50f} {sysid:s}'.format(
+            qno=queryno,
+            docid=docid,
+            rank=(i + 1),
+            score=scr,
+            sysid='hm{:d}xones'.format(iterct)
+        ))
 
 
 if __name__ == '__main__':
@@ -112,43 +156,20 @@ if __name__ == '__main__':
         unittest.main()
         exit()
     # parse args
-    try:
-        npzpath = sys.argv[1]
-        queryno = int(sys.argv[2])
-        assert os.path.isdir(npzpath)
-    except:
-        print('USAGE: python {} PATH INT'.format(__file__))
-        print()
-        print('PATH - directory with *.npz files produced by compress.py')
-        print('INT  - query number')
-        exit()
-    # load run data
-    runs = lib.trec.load_comp_system_dir(npzpath, queryno)
-    if not runs:
-        print('No runs were loaded.')
-        exit()
-    # make graph nodes
-    sysset, docset = mk_nodes(runs)
-    sysarr = numpy.array(sorted(sysset))
-    docarr = numpy.array(sorted(docset))
-    del sysset, docset
-    print(len(sysarr), 'Systems;', len(docarr), 'Documents')
-    # make graph edges
-    sys_outlinks = mk_edges(runs, sysarr, docarr)
-    print(sys_outlinks.nbytes, 'bytes used by adjacency matrix')
-    # perform hits analysis
-    a_rio = RatioIsOne(0.001, msg="\tAuths satisfy")
-    h_rio = RatioIsOne(0.1, msg="\tHubs satisfy")
-    docscr, sysscr = lib.hits.hits(
-        sys_outlinks,
-        lib.end.ConditionStreak(lambda i,a,h: a_rio(a) and h_rio(h), 3)
-    )
-    # report
-    order = numpy.argsort(sysscr)[::-1]
-    print('\n'.join('{:< 20} {}'.format(*x) for x in zip(sysscr[order][:10], sysarr[order])))
-    print()
-    order = numpy.argsort(docscr)[::-1]
-    print('\n'.join('{:< 20} {}'.format(*x) for x in zip(docscr[order][:10], docarr[order])))
+    ap = argparse.ArgumentParser(description='''Print to stdout a ranked list
+    of documents for the query QNO by running HITS for Metasearch for N
+    iterations. TREC systems are the "hubs" and documents are the
+    "authorities".''')
+    ap.add_argument('npz-dir', metavar='DIR', help='''directory containing
+    npz files produced by compress.py''')
+    ap.add_argument('query-number', metavar='QNO', type=int, help='''query
+    number for which to produce a ranked list''')
+    ap.add_argument('iterations', metavar='N', type=int, help='''number of
+    iterations to run the algorithm''')
+    ap.add_argument('-t', '--test', action='store_true', help='''run
+    unittests and exit; other arguments aren't required''')
+    ns = ap.parse_args()
+    main(getattr(ns, 'npz-dir'), getattr(ns, 'query-number'), ns.iterations)
 
 
 ##############################################################################

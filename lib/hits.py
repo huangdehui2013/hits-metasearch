@@ -31,7 +31,7 @@ def hits_update(a_old, h_old, a_inlinks, h_outlinks, data=None):
 
 
 def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
-        data=None):
+        data=None, printto=None):
     '''Calculate hub and authority scores; end when stopping_fn returns true.
 
     h_outlinks:
@@ -51,6 +51,8 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
         (We normalize the raw weights when this is False.)
     data:
         Auxiliary data passed directly into update_fn.
+    printto:
+        File-object to which messages are printed.
 
     return:
         (1darr<num>, 1darr<num>)
@@ -64,7 +66,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
     # iteratively update scores
     i = 1
     while not stopping_fn(i, a, h):
-        print('Iteration', i)
+        printto and print('INFO: Iteration', i, file=printto)
         # update
         a, h = update_fn(a, h, a_inlinks, h_outlinks, data)
         # normalize
