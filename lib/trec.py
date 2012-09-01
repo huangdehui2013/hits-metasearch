@@ -12,6 +12,7 @@ import os
 import sys
 import glob
 import itertools
+import collections
 # 3rd party
 import numpy
 
@@ -89,6 +90,11 @@ def gen_system_dir(dirpath):
 
 
 def comp_system_dir(dirpath, outpath, printto=None):
+    '''str str optional<file-like> --> None
+    
+    Convert a directory of TREC run files to numpy npz files.
+
+    '''
     outpath = os.path.normpath(outpath)
     os.makedirs(outpath)
     printto and print('Compressing systems...', file=printto)
@@ -100,23 +106,39 @@ def comp_system_dir(dirpath, outpath, printto=None):
     printto and print('\rCompressed', (i + 1), file=printto)
 
 
-def load_comp_system_dir(dirpath, queryno, quiet=False, printto=None):
-    '''Return {sysid: <docid,score>, ...} for a given query number.
-    
-    {str: 1darr<str,float>, ...}
+def load_comp_system_dir(dirpath, queries=None, printto=None):
+    '''str [int] --> {int:      {str  : 1darr<str  ,float>, ...}, ...}
+                     {querynum: {sysid: 1darr<docid,score>, ...}, ...}
+
+    Load ranked document lists from npz files in the directory into a
+    dictionary indexed:
+        d[querynum][sysid] --> 1darr<docid,score>
 
     '''
-    data = {}
+    # npz files don't allow numerical keys..
+    n2k = lambda n: 'query{:d}'.format(n)
+    k2n = lambda k: int(k.replace('query', ''))
+    def loadnpz(path):
+        sysid, _ = os.path.splitext(os.path.basename(path))
+        return sysid, numpy.load(p)
+    def iterdata(sysid, npzdata):
+        if queries is None:
+            for k, v in npzdata.iteritems():
+                yield k2n(k), v
+        else:
+            for n in queries:
+                try:
+                    yield n, npzdata[n2k(n)]
+                except KeyError:
+                    printto and print('No run for query #{} in system "{}"'.
+                    format(n, sysid), file=printto)
+    # -- inner --
+    data = collections.defaultdict(dict)
     for p in glob.iglob(os.path.join(dirpath, '*.npz')):
-        f = numpy.load(p)
-        sysid, _ = os.path.splitext(os.path.basename(p))
-        try:
-            # extract a run for the specified query
-            data[sysid] = f['query{}'.format(queryno)]
-        except KeyError:
-            if not quiet:
-                printto and print('No run for query #{} in system "{}"'.
-                    format(queryno, sysid), file=printto)
+        sysid, runs = loadnpz(p)
+        for qno, run in iterdata(sysid, runs):
+            data[qno][sysid] = run
+    data.default_factory = None
     return data
 
 
