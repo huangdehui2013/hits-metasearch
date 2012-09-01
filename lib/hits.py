@@ -66,7 +66,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
     # iteratively update scores
     i = 1
     while not stopping_fn(i, a, h):
-        printto and print('INFO: Iteration', i, file=printto)
+        printto and print('\rINFO: Iteration', i, file=printto, end='')
         # update
         a, h = update_fn(a, h, a_inlinks, h_outlinks, data)
         # normalize
@@ -77,6 +77,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
         h /= h.sum()
         # count
         i += 1
+    printto and print()
     return a, h
 
 
