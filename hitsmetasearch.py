@@ -28,7 +28,12 @@ import lib.end
 
 
 def mk_nodes(allruns):
-    '''Return (set, set) of (sysids, docids).'''
+    '''{sysid: 1darr<docid,score>, ...} --> (sysids, docids)
+       {str  : 1darr<str  ,float>, ...} --> ({str} , {str} )
+
+    allruns is a map from sysid to the ranked list of one system and query
+
+    '''
     docfield = lib.trec.DOC
     docs = set()
     for arr in allruns.itervalues():
@@ -37,9 +42,15 @@ def mk_nodes(allruns):
 
 
 def mk_edges(allruns, sysarr, docarr):
-    '''Return an adjacency matrix with the edges from systems to documents.
+    '''{sysid: 1darr<docid,score>, ...} 1darr<sysid> 1darr<docid>
+       {str  : 1darr<str  ,float>, ...} 1darr<str  > 1darr<str  >
+    -->
+        2darr[sysid][docid]<bool>
+        2darr[str  ][str  ]<edge>
 
-    Return a numpy.array shaped (# sys, # docs) containing booleans.
+    allruns is a map from sysid to the ranked list of one system and query
+
+    Return an adjacency matrix with the edges from systems to documents.
 
     '''
     docfield = lib.trec.DOC
@@ -110,20 +121,13 @@ def stderr(*args, **kwargs):
 ## Main
 
 
-def main(npzpath, queryno, iterct):
-    # load run data
-    runs = lib.trec.load_comp_system_dir(npzpath, queryno, printto=sys.stderr)
-    if not runs:
-        stderr('ERROR: No runs were loaded.')
-        exit(1)
+def main_query(query, srun, iterct):
+    '''Run HITS over all systems for one query.'''
     # make graph nodes
-    sysset, docset = mk_nodes(runs)
-    sysarr = numpy.array(sorted(sysset))
-    docarr = numpy.array(sorted(docset))
-    del sysset, docset
+    sysarr, docarr = [numpy.array(sorted(s)) for s in mk_nodes(srun)] # only two
     stderr('INFO: {} systems, {} documents'.format(len(sysarr), len(docarr)))
     # make graph edges
-    sys_outlinks = mk_edges(runs, sysarr, docarr)
+    sys_outlinks = mk_edges(srun, sysarr, docarr)
     stderr('INFO: {} bytes used by adjacency matrix'.format(sys_outlinks.nbytes))
     # perform hits analysis
     docscr, sysscr = lib.hits.hits(
@@ -132,20 +136,32 @@ def main(npzpath, queryno, iterct):
         printto=sys.stderr)
     # report systems
     order = numpy.argsort(sysscr)[::-1]
-    stderr('INFO: Top ten systems')
-    for scr, sysid in itertools.izip(sysscr[order][:10], sysarr[order]):
+    stderr('INFO: Top systems')
+    for scr, sysid in itertools.izip(sysscr[order][:3], sysarr[order]):
         stderr('INFO: {:< 20} {}'.format(scr, sysid))
     # report documents
     order = numpy.argsort(docscr)[::-1]
     for i, (scr, docid) in enumerate(
     itertools.izip(docscr[order][:1000], docarr[order])):
         print('{qno:d} Q0 {docid:s} {rank:d} {score:.50f} {sysid:s}'.format(
-            qno=queryno,
+            qno=query,
             docid=docid,
             rank=(i + 1),
             score=scr,
             sysid='hm{:d}xones'.format(iterct)
         ))
+
+
+def main(npzpath, querynos, iterct):
+    # load
+    qsrun = lib.trec.load_comp_system_dir(npzpath, querynos, printto=sys.stderr)
+    # run algorithm once per query
+    for q, srun in qsrun.iteritems():
+        if srun:
+            stderr('INFO: query {}'.format(q))
+            main_query(q, srun, iterct)
+        else:
+            stderr('ERROR: No runs were loaded for query {}.'.format(q))
 
 
 if __name__ == '__main__':
@@ -160,16 +176,19 @@ if __name__ == '__main__':
     of documents for the query QNO by running HITS for Metasearch for N
     iterations. TREC systems are the "hubs" and documents are the
     "authorities".''')
-    ap.add_argument('npz-dir', metavar='DIR', help='''directory containing
-    npz files produced by compress.py''')
-    ap.add_argument('query-number', metavar='QNO', type=int, help='''query
-    number for which to produce a ranked list''')
-    ap.add_argument('iterations', metavar='N', type=int, help='''number of
+    ap.add_argument('dir', metavar='DIR', help='''directory containing npz
+    files produced by compress.py''')
+    ap.add_argument('iterct', metavar='I', type=int, help='''number of
     iterations to run the algorithm''')
+    ap.add_argument('-n', '--queries', metavar='N', nargs='*', type=int,
+    help='''query numbers for which to produce a ranked list''')
     ap.add_argument('-t', '--test', action='store_true', help='''run
     unittests and exit; other arguments aren't required''')
     ns = ap.parse_args()
-    main(getattr(ns, 'npz-dir'), getattr(ns, 'query-number'), ns.iterations)
+    if not os.path.isdir(ns.dir):
+        stderr('ERROR: No such directory "{}".'.format(ns.dir))
+        exit(1)
+    main(ns.dir, ns.queries, ns.iterct)
 
 
 ##############################################################################
