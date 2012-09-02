@@ -1,7 +1,9 @@
 #!/bin/sh
 
-if test $# -eq 0
-then
-    echo "USAGE: $0 PATH"
-    echo
-    echo "PATH  - Directory containing 
+./hitsmetasearch.py data-trec8/comp/ 0   > hm0xones
+./hitsmetasearch.py data-trec8/comp/ 10  > hm10xones
+./hitsmetasearch.py data-trec8/comp/ 100 > hm100xones
+
+# linear func...?
+
+# nonlinear func??
