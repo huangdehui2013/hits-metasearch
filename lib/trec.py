@@ -102,7 +102,7 @@ def comp_system_dir(dirpath, outpath, printto=None):
         outname = os.path.join(outpath, '{}.npz'.format(name))
         numpy.savez_compressed(outname, **data)
         printto and print('\r', (i + 1), end='', file=printto)
-        printto and sys.stdout.flush()
+        printto and printto.flush()
     printto and print('\rCompressed', (i + 1), file=printto)
 
 
@@ -131,7 +131,7 @@ def load_comp_system_dir(dirpath, queries=None, printto=None):
                     yield n, npzdata[n2k(n)]
                 except KeyError:
                     printto and print('No run for query #{} in system "{}"'.
-                    format(n, sysid), file=printto)
+                        format(n, sysid), file=printto)
     # -- inner --
     data = collections.defaultdict(dict)
     for p in glob.iglob(os.path.join(dirpath, '*.npz')):
