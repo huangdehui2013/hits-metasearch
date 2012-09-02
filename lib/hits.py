@@ -77,7 +77,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
         h /= h.sum()
         # count
         i += 1
-    printto and print()
+    printto and print(file=printto)
     return a, h
 
 
