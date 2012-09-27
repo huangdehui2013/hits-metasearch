@@ -225,9 +225,9 @@ if __name__ == '__main__':
         files produced by compress.py''')
     ap.add_argument('iterct', metavar='I', type=int, help='''number of
         iterations to run the algorithm''')
-    ap.add_argument('edgemode', metavar='STR', choices=('const', 'linear',
-        'negexp'), help='''how edges should decay as document rank
-        increases''')
+    ap.add_argument('edgemode', metavar='STR', choices=EDGEMODE.keys(),
+        help='''how edges should decay as document rank increases: {}'''.
+        format(', '.join(EDGEMODE.keys())))
     ap.add_argument('-n', '--queries', metavar='N', nargs='*', type=int,
         help='''query numbers for which to produce a ranked list''')
     ap.add_argument('-t', '--test', action='store_true', help='''run unittests
