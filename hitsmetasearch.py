@@ -27,6 +27,20 @@ import lib.end
 ## Utilities
 
 
+def __edgemode_negexp():
+    zerotofive = lambda r, ct: (r / ct) * 5 # Dr=0..ct; Dct=..; R=0..5
+    lam = 1
+    negexp = lambda x: lam * (math.e ** (-x * lam)) # Dx=0..5; R=1..0
+    return lambda r, ct: negexp(zerotofive(r, ct)) # Dr=0..ct; Dct=..; R=1..0
+
+
+EDGEMODE = {
+    'const': None, # lambda _*: 1, # Dr=..; Dct=..; R=1
+    'linear': lambda r, ct: 1 - (r / ct), # Dr=0..ct; Dct=..; R=1..0
+    'negexp': __edgemode_negexp(),
+}
+
+
 def mk_nodes(allruns):
     '''{sysid: 1darr<docid,score>, ...} --> (sysids, docids)
        {str  : 1darr<str  ,float>, ...} --> ({str} , {str} )
@@ -41,28 +55,38 @@ def mk_nodes(allruns):
     return set(allruns.keys()), docs
 
 
-def mk_edges(allruns, sysarr, docarr):
-    '''{sysid: 1darr<docid,score>, ...} 1darr<sysid> 1darr<docid>
-       {str  : 1darr<str  ,float>, ...} 1darr<str  > 1darr<str  >
+def mk_edgeweights(allruns, sysarr, docarr, edgeweight=None):
+    '''{sysid: 1darr<docid,score>, ...} 1darr<sysid> 1darr<docid> [num num --> num   ]
+       {str  : 1darr<str  ,float>, ...} 1darr<str  > 1darr<str  > [rank ct --> weight]
     -->
-        2darr[sysid][docid]<bool>
-        2darr[str  ][str  ]<edge>
+        2darr[sysid][docid]<num    OR bool>
+        2darr[str  ][str  ]<weight OR edge>
 
     allruns is a map from sysid to the ranked list of one system and query
 
-    Return an adjacency matrix with the edges from systems to documents.
+    Return an adjacency matrix with the edge weights from systems to
+    documents, or boolean values if no edge weight function is given.
 
     '''
+    # let
     docfield = lib.trec.DOC
-    edges = numpy.zeros([len(sysarr),len(docarr)], dtype=numpy.bool)
+    if edgeweight is None:
+        dt = numpy.bool_
+        edgeweight = lambda *_: True
+    else:
+        dt = lib.trec.SCR_SCALAR
+    # let
+    edges = numpy.zeros([len(sysarr), len(docarr)], dtype=dt)
     docindexes = {docid:i for i, docid in enumerate(docarr)}
+    # for
     for sys_i, sysid in enumerate(sysarr):
-            sysdocs = allruns[sysid][docfield]
-            for docid in sysdocs:
+            sysdocs = allruns[sysid][docfield] # in ranked order
+            rankct = len(sysdocs)
+            for rank, docid in enumerate(sysdocs):
                 doc_i = docindexes[docid]
-                edges[sys_i][doc_i] = True
+                edges[sys_i][doc_i] = edgeweight(rank, rankct)
             sysdocs = None
-    del docindexes
+    # ret
     return edges
 
 
@@ -103,14 +127,22 @@ class TestMainUtils(unittest.TestCase):
         self.sl = ['h1', 'h2']
         self.dl = list('abcde')
         self.e = numpy.array([[1, 1, 1, 1, 0],
-                              [1, 0, 1, 0, 1]], dtype=numpy.bool_)
+                              [1, 0, 1, 0, 1]],
+                              dtype=numpy.bool_)
+        self.w = numpy.array([[1.0, 0.75, 0.5,                0.25, 0.0                ],
+                              [1.0, 0.0,  0.6666666666666667, 0.0,  0.33333333333333337]],
+                              dtype=numpy.float64)
     def test__mk_nodes(self):
         sys, docs = mk_nodes(self.runs)
         self.assertEquals(sorted(sys), self.sl)
         self.assertEquals(sorted(docs), self.dl)
     def test__mk_edges(self):
-        e = mk_edges(self.runs, numpy.array(self.sl), numpy.array(self.dl))
-        self.assertTrue((e == self.e).all())
+        e = mk_edgeweights(self.runs, numpy.array(self.sl), numpy.array(self.dl))
+        numpy.testing.assert_equal(e, self.e)
+    def test__mk_edgeweights(self):
+        w = mk_edgeweights(self.runs, numpy.array(self.sl), numpy.array(self.dl),
+            lambda r, ct: 1 - (r / ct))
+        numpy.testing.assert_allclose(w, self.w)
 
 
 def stderr(*args, **kwargs):
@@ -121,18 +153,28 @@ def stderr(*args, **kwargs):
 ## Main
 
 
-def main_query(query, srun, iterct):
+def main_query(query, srun, iterct, edgemode):
     '''Run HITS over all systems for one query.'''
     # make graph nodes
     sysarr, docarr = [numpy.array(sorted(s)) for s in mk_nodes(srun)] # only two
     stderr('INFO: {} systems, {} documents'.format(len(sysarr), len(docarr)))
-    # make graph edges
-    sys_outlinks = mk_edges(srun, sysarr, docarr)
-    stderr('INFO: {} bytes used by adjacency matrix'.format(sys_outlinks.nbytes))
+    # make graph edges and edge weights
+    if edgemode == 'const':
+        sys_outlinks = mk_edgeweights(srun, sysarr, docarr)
+        data = dict()
+    elif edgemode in {'linear', 'negexp'}:
+        sys_outweights = mk_edgeweights(srun, sysarr, docarr, EDGEMODE[edgemode])
+        sys_outlinks = numpy.array(sys_out, dtype=numpy.bool_)
+        data = {'a_inweights': sys_outweights.transpose()}
+        del sys_outweights
+    else:
+        exit(2)
+        stderr('ERROR: unknown edgemode "{}"'.format(edgemode))
     # perform hits analysis
     docscr, sysscr = lib.hits.hits(
         sys_outlinks,
         lib.end.Countdown(iterct),
+        data=data,
         printto=sys.stderr)
     # report systems
     order = numpy.argsort(sysscr)[::-1]
@@ -148,18 +190,18 @@ def main_query(query, srun, iterct):
             docid=docid,
             rank=(i + 1),
             score=scr,
-            sysid='hm{:d}xones'.format(iterct)
+            sysid='hm{:d}x{}'.format(iterct, edgemode)
         ))
 
 
-def main(npzpath, querynos, iterct):
+def main(npzpath, querynos, iterct, edgequery):
     # load
     qsrun = lib.trec.load_comp_system_dir(npzpath, querynos, printto=sys.stderr)
     # run algorithm once per query
     for q, srun in qsrun.iteritems():
         if srun:
             stderr('INFO: query {}'.format(q))
-            main_query(q, srun, iterct)
+            main_query(q, srun, iterct, edgequery)
         else:
             stderr('ERROR: No runs were loaded for query {}.'.format(q))
 
@@ -177,18 +219,21 @@ if __name__ == '__main__':
     iterations. TREC systems are the "hubs" and documents are the
     "authorities".''')
     ap.add_argument('dir', metavar='DIR', help='''directory containing npz
-    files produced by compress.py''')
+        files produced by compress.py''')
     ap.add_argument('iterct', metavar='I', type=int, help='''number of
-    iterations to run the algorithm''')
+        iterations to run the algorithm''')
+    ap.add_argument('edgetype', metavar='STR', choices=('const', 'linear',
+        'negexp'), help='''how edges should decay as document rank
+        increases''')
     ap.add_argument('-n', '--queries', metavar='N', nargs='*', type=int,
-    help='''query numbers for which to produce a ranked list''')
-    ap.add_argument('-t', '--test', action='store_true', help='''run
-    unittests and exit; other arguments aren't required''')
+        help='''query numbers for which to produce a ranked list''')
+    ap.add_argument('-t', '--test', action='store_true', help='''run unittests
+        and exit; other arguments aren't required''')
     ns = ap.parse_args()
     if not os.path.isdir(ns.dir):
         stderr('ERROR: No such directory "{}".'.format(ns.dir))
         exit(1)
-    main(ns.dir, ns.queries, ns.iterct)
+    main(ns.dir, ns.queries, ns.iterct, ns.edgetype)
 
 
 ##############################################################################
