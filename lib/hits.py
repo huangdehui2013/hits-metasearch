@@ -20,21 +20,26 @@ def hits_update(a_old, h_old, a_inlinks, h_outlinks, data=None):
     1darr<num> 1darr<num> 2darr<bool> 2darr<bool> any --> 1darr<num> 1darr<num>
 
     '''
-    assert len(h_old), len(a_old) == h_outlinks.shape
+    assert h_old.shape[0], a_old.shape[0] == h_outlinks.shape
     assert a_inlinks.shape == tuple(reversed(h_outlinks.shape))
     # a hub score is the sum of the scores of the auths to which it points
     h = numpy.fromiter(
         (a_old[m].sum() for m in h_outlinks),
         dtype=h_old.dtype, count=h_old.shape[0])
-    if 'a_inweights' in data:
-        # an auth score is the linear combination of the hub scores which
-        # point to it and the weight on the edge from each hub to the auth
-        a_in = itertools.izip(a_inlinks, data['a_inweights'])
-        a = numpy.fromiter((numpy.vdot(h_old[m], w) for m, w in a_in),
-            dtype=a_old.dtype, count=a_old.shape[0])
-    else:
+    #
+    try:
+        a_inweights = data['a_inweights']
+    except KeyError:
         # an auth score is the sum of the scores of the hubs which point to it
         a = numpy.fromiter((h_old[m].sum() for m in a_inlinks),
+            dtype=a_old.dtype, count=a_old.shape[0])
+    else:
+        # an auth score is the linear combination of the hub scores which
+        # point to it and the weight on the edge from each hub to the auth
+        assert a_inlinks.shape == a_inweights.shape
+        a_in = itertools.izip(a_inlinks, a_inweights)
+        a = numpy.fromiter(
+            (numpy.vdot(h_old[m], w[m]) for m, w in a_in),
             dtype=a_old.dtype, count=a_old.shape[0])
     #
     return a, h
