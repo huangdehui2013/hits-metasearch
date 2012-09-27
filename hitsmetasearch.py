@@ -11,6 +11,7 @@ from codecs import open
 import os
 import sys
 import glob
+import math
 import argparse
 import unittest
 import itertools
@@ -164,7 +165,7 @@ def main_query(query, srun, iterct, edgemode):
         data = dict()
     elif edgemode in {'linear', 'negexp'}:
         sys_outweights = mk_edgeweights(srun, sysarr, docarr, EDGEMODE[edgemode])
-        sys_outlinks = numpy.array(sys_out, dtype=numpy.bool_)
+        sys_outlinks = numpy.array(sys_outweights, dtype=numpy.bool_)
         data = {'a_inweights': sys_outweights.transpose()}
         del sys_outweights
     else:
