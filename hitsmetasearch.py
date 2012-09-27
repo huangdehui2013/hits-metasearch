@@ -195,14 +195,16 @@ def main_query(query, srun, iterct, edgemode):
         ))
 
 
-def main(npzpath, querynos, iterct, edgequery):
+def main(npzpath, querynos, iterct, edgemode):
     # load
+    stderr('INFO: Loading...')
     qsrun = lib.trec.load_comp_system_dir(npzpath, querynos, printto=sys.stderr)
     # run algorithm once per query
     for q, srun in qsrun.iteritems():
         if srun:
-            stderr('INFO: query {}'.format(q))
-            main_query(q, srun, iterct, edgequery)
+            stderr('INFO: iterct {}, edgemode {}, queryno {}'.format(iterct,
+                edgemode, q))
+            main_query(q, srun, iterct, edgemode)
         else:
             stderr('ERROR: No runs were loaded for query {}.'.format(q))
 
@@ -223,7 +225,7 @@ if __name__ == '__main__':
         files produced by compress.py''')
     ap.add_argument('iterct', metavar='I', type=int, help='''number of
         iterations to run the algorithm''')
-    ap.add_argument('edgetype', metavar='STR', choices=('const', 'linear',
+    ap.add_argument('edgemode', metavar='STR', choices=('const', 'linear',
         'negexp'), help='''how edges should decay as document rank
         increases''')
     ap.add_argument('-n', '--queries', metavar='N', nargs='*', type=int,
@@ -234,7 +236,7 @@ if __name__ == '__main__':
     if not os.path.isdir(ns.dir):
         stderr('ERROR: No such directory "{}".'.format(ns.dir))
         exit(1)
-    main(ns.dir, ns.queries, ns.iterct, ns.edgetype)
+    main(ns.dir, ns.queries, ns.iterct, ns.edgemode)
 
 
 ##############################################################################
