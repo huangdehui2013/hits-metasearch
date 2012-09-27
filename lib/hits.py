@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 from codecs import open
 # stdlib
 import unittest
+import itertools
 # 3rd party
 import numpy
 
@@ -19,14 +20,23 @@ def hits_update(a_old, h_old, a_inlinks, h_outlinks, data=None):
     1darr<num> 1darr<num> 2darr<bool> 2darr<bool> any --> 1darr<num> 1darr<num>
 
     '''
-    assert len(h_old) == h_outlinks.shape[0]
-    assert len(a_old) == h_outlinks.shape[1]
-    # an auth score is the sum of the scores of the hubs which point to it
+    assert len(h_old), len(a_old) == h_outlinks.shape
+    assert a_inlinks.shape == tuple(reversed(h_outlinks.shape))
     # a hub score is the sum of the scores of the auths to which it points
-    a = numpy.fromiter((h_old[m].sum() for m in a_inlinks),
-        dtype=a_old.dtype, count=a_old.shape[0])
-    h = numpy.fromiter((a_old[m].sum() for m in h_outlinks),
+    h = numpy.fromiter(
+        (a_old[m].sum() for m in h_outlinks),
         dtype=h_old.dtype, count=h_old.shape[0])
+    if 'a_inweights' in data:
+        # an auth score is the linear combination of the hub scores which
+        # point to it and the weight on the edge from each hub to the auth
+        a_in = itertools.izip(a_inlinks, data['a_inweights'])
+        a = numpy.fromiter((numpy.vdot(h_old[m], w) for m, w in a_in),
+            dtype=a_old.dtype, count=a_old.shape[0])
+    else:
+        # an auth score is the sum of the scores of the hubs which point to it
+        a = numpy.fromiter((h_old[m].sum() for m in a_inlinks),
+            dtype=a_old.dtype, count=a_old.shape[0])
+    #
     return a, h
 
 
@@ -65,7 +75,9 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
     h = numpy.ones(h_outlinks.shape[0], dtype=numpy.float64)
     # iteratively update scores
     i = 1
+    run = False
     while not stopping_fn(i, a, h):
+        run = True
         printto and print('\rINFO: Iteration', i, file=printto, end='')
         # update
         a, h = update_fn(a, h, a_inlinks, h_outlinks, data)
@@ -77,7 +89,7 @@ def hits(h_outlinks, stopping_fn, update_fn=hits_update, sqrnorm=False,
         h /= h.sum()
         # count
         i += 1
-    printto and print(file=printto)
+    run and printto and print(file=printto)
     return a, h
 
 
