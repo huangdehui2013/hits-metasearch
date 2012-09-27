@@ -4,3 +4,4 @@ data-*
 *.swp
 *.tgz
 trec_eval.pl
+trials
