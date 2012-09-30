@@ -1,6 +1,6 @@
 # HITS for Metasearch
 
-*A metasearch algorithm which evaluates system performance using HITS.*
+*A metasearch algorithm which evaluates system performance using Jon Kleinberg's HITS algorithm.*
 
 This is a research project I am doing with [Javed Aslam](http://www.ccs.neu.edu/home/jaa/) at Northeastern University. It works with TREC-formatted ranked document lists. Use `compress.py` to convert a directory of TREC data to numpy data files. Use `hitsmetasearch.py` to run the algorithm on the numpy data files.
 
