@@ -42,5 +42,5 @@
     * w(r) = ln(z/r) [/ ln(z)]
     * ndcg classic 
         * 1 / ln(r+1)
-        * ndcg IR evaluation methods have spawned a huge variety of discount functions
+        * [ndcg](http://www.google.com/search?q=ndcg) IR evaluation methods have spawned a huge variety of discount functions
 * show javed graph of mangled negexp function and data to determine half life
