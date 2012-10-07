@@ -36,7 +36,7 @@ def __edgemode_negexp():
 
 
 EDGEMODE = {
-    'const': None, # lambda _*: 1, # Dr=..; Dct=..; R=1
+    'const': None, #lambda *_: 1, # Dr=..; Dct=..; R=1
     'linear': lambda r, ct: 1 - (r / ct), # Dr=0..ct; Dct=..; R=1..0
     'negexp': __edgemode_negexp(),
 }
