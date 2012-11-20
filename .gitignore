@@ -5,3 +5,6 @@ data-*
 *.tgz
 trec_eval.pl
 trials
+virtualenv.py
+logs
+*.png
