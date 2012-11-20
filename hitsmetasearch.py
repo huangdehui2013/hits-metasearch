@@ -42,6 +42,9 @@ EDGEMODE = {
 }
 
 
+EPSILON = 0.001
+
+
 def mk_nodes(allruns):
     '''{sysid: 1darr<docid,score>, ...} --> (sysids, docids)
        {str  : 1darr<str  ,float>, ...} --> ({str} , {str} )
@@ -106,8 +109,8 @@ class RatioIsOne(object):
         else:
             eq = (abs(self.prev / vector - 1) < self.eps).all()
             self.prev = vector
-            if self.msg:
-                self.printto and print('INFO:', self.msg, file=printto)
+            if self.msg and self.printto:
+                print('INFO:', self.msg, file=printto)
             return eq
 
 
@@ -154,59 +157,80 @@ def stderr(*args, **kwargs):
 ## Main
 
 
-def main_query(query, srun, iterct, edgemode):
+def main2(query, srun, edgemode, epsilon, sqrnorm):
     '''Run HITS over all systems for one query.'''
+    stderr('INFO: queryno {}, edgemode {}, epsilon {}, sqrnorm {}'.format(
+        query, edgemode, epsilon, sqrnorm))
+
     # make graph nodes
-    sysarr, docarr = [numpy.array(sorted(s)) for s in mk_nodes(srun)] # only two
+    sysset, docset = mk_nodes(srun)
+    sysarr = numpy.array(sorted(sysset))
+    docarr = numpy.array(sorted(docset))
+    del sysset, docset
     stderr('INFO: {} systems, {} documents'.format(len(sysarr), len(docarr)))
+
     # make graph edges and edge weights
-    if edgemode == 'const':
-        sys_outlinks = mk_edgeweights(srun, sysarr, docarr)
-        data = dict()
-    elif edgemode in {'linear', 'negexp'}:
-        sys_outweights = mk_edgeweights(srun, sysarr, docarr, EDGEMODE[edgemode])
-        sys_outlinks = numpy.array(sys_outweights, dtype=numpy.bool_)
-        data = {'a_inweights': sys_outweights.transpose()}
-        del sys_outweights
-    else:
-        exit(2)
+    if edgemode not in EDGEMODE:
         stderr('ERROR: unknown edgemode "{}"'.format(edgemode))
+        exit(2)
+    elif edgemode == 'const':
+        sys_out = mk_edgeweights(srun, sysarr, docarr)
+    else:
+        sys_out = mk_edgeweights(srun, sysarr, docarr, EDGEMODE[edgemode])
+
+    # make convergence checking function
+    rio_a = RatioIsOne(epsilon)
+    rio_h = RatioIsOne(epsilon)
+    def rio_both(_, a, h):
+        ac = rio_a(a)
+        hc = rio_h(h)
+        if ac or hc:
+            stderr('INFO: {} old:new ~ 1'.format(
+                ac and hc and 'both hubs and authorities' or
+                ac and 'authorities' or
+                hc and 'hubs' or
+                'neither'))
+        return ac and hc
+    hundred = lib.end.Countdown(100)
+    check_converged = lib.end.ConditionStreak(
+        lambda *a, **kw: hundred() or rio_both(*a, **kw),
+        3)
+
     # perform hits analysis
-    docscr, sysscr = lib.hits.hits(
-        sys_outlinks,
-        lib.end.Countdown(iterct),
-        data=data,
-        printto=sys.stderr)
+    docscr, sysscr = lib.hits.hits(sys_out, check_converged,
+        sqrnorm=sqrnorm, printto=sys.stderr)
+
     # report systems
-    order = numpy.argsort(sysscr)[::-1]
     stderr('INFO: Top systems')
+    order = numpy.argsort(sysscr)[::-1]
     for scr, sysid in itertools.izip(sysscr[order][:3], sysarr[order]):
         stderr('INFO: {:< 20} {}'.format(scr, sysid))
+
     # report documents
+    sysid = 'hm-{}-e{}{}'.format(edgemode, epsilon, sqrnorm and 's')
     order = numpy.argsort(docscr)[::-1]
-    for i, (scr, docid) in enumerate(
-    itertools.izip(docscr[order][:1000], docarr[order])):
+    for i, (scr, docid) in enumerate(itertools.izip(docscr[order][:1000], docarr[order])):
         print('{qno:d} Q0 {docid:s} {rank:d} {score:.50f} {sysid:s}'.format(
             qno=query,
             docid=docid,
             rank=(i + 1),
             score=scr,
-            sysid='hm{:d}x{}'.format(iterct, edgemode)
+            sysid=sysid,
         ))
 
 
-def main(npzpath, querynos, iterct, edgemode):
+def main(npzpath, edgemode, querynos, epsilon, sqrnorm):
     # load
-    stderr('INFO: Loading...')
+    stderr('INFO: Loading ... {}'.format(npzpath))
     qsrun = lib.trec.load_comp_system_dir(npzpath, querynos, printto=sys.stderr)
     # run algorithm once per query
     for q, srun in qsrun.iteritems():
         if srun:
-            stderr('INFO: iterct {}, edgemode {}, queryno {}'.format(iterct,
-                edgemode, q))
-            main_query(q, srun, iterct, edgemode)
+            main2(q, srun, edgemode, epsilon, sqrnorm)
+            stderr('')
         else:
             stderr('ERROR: No runs were loaded for query {}.'.format(q))
+            exit(2)
 
 
 if __name__ == '__main__':
@@ -218,25 +242,20 @@ if __name__ == '__main__':
         exit()
     # parse args
     ap = argparse.ArgumentParser(description='''Print to stdout a ranked list
-    of documents for the query QNO by running HITS for Metasearch for N
-    iterations. TREC systems are the "hubs" and documents are the
-    "authorities".''')
-    ap.add_argument('dir', metavar='DIR', help='''directory containing npz
-        files produced by compress.py''')
-    ap.add_argument('iterct', metavar='I', type=int, help='''number of
-        iterations to run the algorithm''')
-    ap.add_argument('edgemode', metavar='STR', choices=EDGEMODE.keys(),
-        help='''how edges should decay as document rank increases: {}'''.
-        format(', '.join(EDGEMODE.keys())))
-    ap.add_argument('-n', '--queries', metavar='N', nargs='*', type=int,
-        help='''query numbers for which to produce a ranked list''')
-    ap.add_argument('-t', '--test', action='store_true', help='''run unittests
-        and exit; other arguments aren't required''')
+    of documents for the query QNO by running HITS for Metasearch until
+    convergence or 100 iterations. TREC systems are the "hubs" and documents
+    are the "authorities".''')
+    ap.add_argument('dir', metavar='DIR', help='''directory containing npz files produced by compress.py''')
+    ap.add_argument('edgemode', metavar='STR', choices=EDGEMODE.keys(), help='''how edges should decay as document rank increases: {}'''.format(', '.join(EDGEMODE.keys())))
+    ap.add_argument('-n', '--queries', metavar='N', nargs='*', type=int, help='''query numbers for which to produce a ranked list (default is all query numbers)''')
+    ap.add_argument('-e', '--epsilon', metavar='E', type=float, default=EPSILON, help='''how far the ratio of old:new vectors may be from 1 and still satisfy convergence criteria (default is {})'''.format(EPSILON))
+    ap.add_argument('-s', '--square-normalize', action='store_true', help='''normalize hub and authority scores with their squared-sum each iteration (default is plain sum)''')
+    ap.add_argument('-t', '--test', action='store_true', help='''run unittests and exit; other arguments aren't required''')
     ns = ap.parse_args()
     if not os.path.isdir(ns.dir):
         stderr('ERROR: No such directory "{}".'.format(ns.dir))
         exit(1)
-    main(ns.dir, ns.queries, ns.iterct, ns.edgemode)
+    main(ns.dir, ns.edgemode, ns.queries, ns.epsilon, ns.square_normalize)
 
 
 ##############################################################################
