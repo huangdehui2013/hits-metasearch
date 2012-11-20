@@ -142,23 +142,22 @@ def plot(script, lines):
 
 
 def compare(sysevals):
+    map_ranked = sorted(sysevals.items(), key=lambda (k, v): v['map'], reverse=True)
     data = []
-    for sys, eval in sorted(sysevals.items(),
-            key=lambda (k, v): v['map'], reverse=True):
+    for sys, eval in map_ranked:
         # make a line
         (xlabel, ylabel), series = eval['r-p']
         _, map = eval['map']
         data.append(plotline(series, "title '{} map{}' with linespoints".format(sys, map)))
-    print(eval.keys())
+    # plot it
     plot(plotscript(
-            output="foo.png",
+            output="r-p.png",
             terminal='png',
             title='TREC8 & Friends',
             xlabel=xlabel,
             ylabel=ylabel,
             xtics=0.1,
             ytics=0.1,
-            size='square',
         ), data)
 
 
@@ -171,8 +170,8 @@ if __name__ == '__main__':
 
     # load evals
     qrel = 'data-trec8/qrel.trec8'
-    trec = eval_all_systems(pool, qrel, glob.glob('data-trec8/raw/input.*'))
     hits = eval_all_systems(pool, qrel, glob.glob('trials/*'))
+    trec = eval_all_systems(pool, qrel, glob.glob('data-trec8/raw/input.*'))
     aslam = load_all_evals(pool, glob.glob('data-trec8/eval.*'))
 
     try:
@@ -193,6 +192,11 @@ if __name__ == '__main__':
     c.update(hits)
     c.update(aslam)
     
+    # print the structure for debugging
+    print('hm-negexp')
+    print(c['hm-negexp'])
+    print()
+
     compare(c)
 
 # eof
