@@ -2,14 +2,12 @@
 
 mkdir trials 2> /dev/null
 
-./hitsmetasearch.py data-trec8/comp/ 0   negexp > trials/hm0xnegexp
-./hitsmetasearch.py data-trec8/comp/ 0   linear > trials/hm0xlinear
-./hitsmetasearch.py data-trec8/comp/ 0   const  > trials/hm0xconst
+./hitsmetasearch.py data-trec8/comp/ negexp > trials/hm-negexp 2> logs/hm-negexp.log
+./hitsmetasearch.py data-trec8/comp/ linear > trials/hm-linear 2> logs/hm-linear.log
+./hitsmetasearch.py data-trec8/comp/ const  > trials/hm-const  2> logs/hm-const.log
 
-./hitsmetasearch.py data-trec8/comp/ 10  negexp > trials/hm10xnegexp
-./hitsmetasearch.py data-trec8/comp/ 10  linear > trials/hm10xlinear
-./hitsmetasearch.py data-trec8/comp/ 10  const  > trials/hm10xconst
+./hitsmetasearch.py data-trec8/comp/ negexp -s > trials/hm-negexp-s 2> logs/hm-negexp-s.log
+./hitsmetasearch.py data-trec8/comp/ linear -s > trials/hm-linear-s 2> logs/hm-linear-s.log
+./hitsmetasearch.py data-trec8/comp/ const  -s > trials/hm-const-s  2> logs/hm-const-s.log
 
-./hitsmetasearch.py data-trec8/comp/ 100 negexp > trials/hm100xnegexp
-./hitsmetasearch.py data-trec8/comp/ 100 linear > trials/hm100xlinear
-./hitsmetasearch.py data-trec8/comp/ 100 const  > trials/hm100xconst
+./eval.py
