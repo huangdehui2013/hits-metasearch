@@ -25,8 +25,8 @@ Load, process, and compress a directory of ascii-formatted TREC runs into corres
 Run the hits algorithm as applied to metasearch. Run without arguments for usage.
 
     Print to stdout a ranked list of documents for the query QNO by running HITS
-    for Metasearch for N iterations. TREC systems are the "hubs" and documents are
-    the "authorities".
+    for Metasearch until convergence or 100 iterations. TREC systems are the
+    "hubs" and documents are the "authorities".
 
 Also supports the weighting of edges based on document rank such that high-ranked documents have a higher edge weight from the systems that point to them than low-ranked documents.
 
